@@ -18,7 +18,8 @@ class TwoDimStokes(FD):
 
         return
 
-    def residual_operator(self, my_field_overlap_sorted):
+    def residual_operator(self, my_field_overlap_sorted,
+                          my_field_overlap_sorted_old):
 
         ux = my_field_overlap_sorted[0]
         uy = my_field_overlap_sorted[1]

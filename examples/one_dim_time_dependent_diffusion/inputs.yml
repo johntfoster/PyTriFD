@@ -1,0 +1,27 @@
+'discretization':
+    'tensor product grid':
+        'bounds': [[0.0, 1.0]]
+        'delta': [0.01]
+'degrees of freedom': ['u']
+'boundary conditions':
+    - 'type': 'dirichlet'
+      'degrees of freedom': ['u']
+      'region':
+          'box': [[-0.1, 0.005]]
+      'value': 0.0
+    - 'type': 'dirichlet'
+      'region':
+          'point-radius':
+              'point': [1.0]
+              'radius': 0.005
+      'value': 1.0
+'material parameters':
+    'k': 0.5
+'numerical':
+    'number of steps': 10
+    'time step': 0.01
+'output':
+    'path': '/Applications/ParaView-5.9.1.app/Contents/MacOS/paraview'
+    'scalar':
+      - 'processor_number'
+    'frequency': 1

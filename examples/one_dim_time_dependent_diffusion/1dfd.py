@@ -3,7 +3,7 @@ from PyTriFD import FD
 import matplotlib.pyplot as plt
 
 
-class OneDimNonlinearDiffusion(FD):
+class OneDimTimeDependentDiffusion(FD):
 
     def parse_additional_inputs(self):
 
@@ -12,12 +12,14 @@ class OneDimNonlinearDiffusion(FD):
         return
 
     def residual_operator(self, my_field_overlap_sorted,
-                          my_field_overlap_sorted_old=None):
+                          my_field_overlap_sorted_old):
 
         u = my_field_overlap_sorted[0]
+        u_n = my_field_overlap_sorted_old[0]
 
-        residual = ((u[:-2] - 2*u[1:-1] + u[2:]) /
-                    (self.deltas[0] ** 2.0) - self.k * u[1:-1] * u[1:-1])
+        residual = ((u[1:-1] - u_n[1:-1]) / self.time_step -
+                    self.k * ((u[:-2] - 2 * u[1:-1] + u[2:]) /
+                              (self.deltas[0] ** 2.0)))
 
         return residual
 
@@ -34,6 +36,6 @@ class OneDimNonlinearDiffusion(FD):
 
 if __name__ == "__main__":
 
-    problem = OneDimNonlinearDiffusion('inputs.yml')
+    problem = OneDimTimeDependentDiffusion('inputs.yml')
     problem.solve()
     u = problem.plot_solution()

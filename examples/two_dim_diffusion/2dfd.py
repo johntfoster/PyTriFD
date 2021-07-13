@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 
 class TwoDimDiffusion(FD):
 
-    def residual_operator(self, my_field_overlap_sorted):
+    def residual_operator(self, my_field_overlap_sorted,
+                          my_field_overlap_sorted_old):
 
         u = my_field_overlap_sorted[0]
 

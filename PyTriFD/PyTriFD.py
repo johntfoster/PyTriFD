@@ -360,10 +360,16 @@ class FD(NOX.Epetra.Interface.Required,
                                       self.problem_dimension)
         self.my_field = Epetra.Vector(field_balanced_map)
 
+
         # Create the overlap vectors
         self.my_nodes_overlap = Epetra.MultiVector(overlap_map,
                                                    self.problem_dimension)
         self.my_field_overlap = Epetra.Vector(field_overlap_map)
+
+        # Create vectors to hold data from last time step (used in time
+        # dependent problems
+        self.my_field_old = Epetra.Vector(field_balanced_map)
+        self.my_field_overlap_old = Epetra.Vector(field_overlap_map)
 
         # Create/get importers
         grid_importer = Epetra.Import(balanced_map, unbalanced_map)
@@ -452,14 +458,24 @@ class FD(NOX.Epetra.Interface.Required,
             self.my_field_overlap.Import(x, field_overlap_importer,
                                          Epetra.Insert)
 
+
             # Sort data for FD calcs
             my_field_overlap_sorted = \
                 (self.my_field_overlap[self.my_field_overlap_indices_sorted]
                  .reshape(-1, self.nodal_dofs).T.reshape(-1, *self.my_strides))
 
+            # Import and sort old time step data
+            self.my_field_overlap_old.Import(self.my_field_old,
+                                         field_overlap_importer,
+                                         Epetra.Insert)
+            my_field_overlap_sorted_old = \
+            (self.my_field_overlap_old[self.my_field_overlap_indices_sorted]
+             .reshape(-1, self.nodal_dofs).T.reshape(-1, *self.my_strides))
+
             # return the (sorted) residual
             self.F_fill[self.my_slice] = \
-                self.residual_operator(my_field_overlap_sorted)
+                self.residual_operator(my_field_overlap_sorted,
+                                       my_field_overlap_sorted_old)
 
             # Interpolate interior values to the boundaries,
             # i.e. "do nothing BCs"
@@ -468,10 +484,10 @@ class FD(NOX.Epetra.Interface.Required,
             for i, dof in enumerate(my_field_overlap_sorted):
                 for j in range(self.problem_dimension):
                     # top/left/front
-                    self.F_fill[i][s0[j]] = dof[s0[j]] - (2 * dof[s1[j]] -
+                    self.F_fill[i][s0[j]] += dof[s0[j]] - (2 * dof[s1[j]] -
                                                           dof[s2[j]])
                     # bottom/right/back
-                    self.F_fill[i][sm1[j]] = dof[sm1[j]] - (2 * dof[sm2[j]] -
+                    self.F_fill[i][sm1[j]] += dof[sm1[j]] - (2 * dof[sm2[j]] -
                                                             dof[sm3[j]])
             # Unsort and fill the actual residual
             F[:] = (self.F_fill.flatten()[
@@ -490,7 +506,8 @@ class FD(NOX.Epetra.Interface.Required,
 
             return False
 
-    def residual_operator(self, my_field_overlap_sorted):
+    def residual_operator(self, my_field_overlap_sorted,
+                          my_field_overlap_sorted_old=None):
         raise NotImplementedError()
 
 
@@ -545,13 +562,14 @@ class FD(NOX.Epetra.Interface.Required,
         guess = self.my_field
 
         for i in range(self.number_of_steps):
+            if self.rank == 0: print(f'Time step: {i}, time = {i*self.time_step}')
             self.solve_one_step(guess)
-            guess = self.get_solution()
+            guess[:] = self.get_solution()[:]
             self.time += self.time_step
+            self.my_field_old[:] = guess[:]
 
     def get_solution(self):
         return self.solver.getSolutionGroup().getX()
-
 
     def get_solution_on_rank0(self):
 
